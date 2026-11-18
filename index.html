@@ -203,19 +203,19 @@
 
     <div class="panel-body">
       <label class="section-label" for="archiveSelect">Archive ANFR</label>
-      <select id="archiveSelect"></select>
+      <select autocomplete=\"off\" id="archiveSelect"></select>
 
       <span class="section-label">Opérateurs</span>
       <div class="op-list">
-        <label class="op-item"><input type="checkbox" value="orange" /><span class="dot" style="background:#ff7900"></span>Orange</label>
-        <label class="op-item"><input type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span>SFR</label>
-        <label class="op-item"><input type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
-        <label class="op-item"><input type="checkbox" value="free" /><span class="dot" style="background:#334155"></span>Free Mobile</label>
-        <label class="op-item"><input type="checkbox" value="autres" /><span class="dot" style="background:#ec4899"></span>Autres (TDF, etc.)</label>
+        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="orange" /><span class="dot" style="background:#ff7900"></span>Orange</label>
+        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span>SFR</label>
+        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
+        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="free" /><span class="dot" style="background:#334155"></span>Free Mobile</label>
+        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="autres" /><span class="dot" style="background:#ec4899"></span>Autres (TDF, etc.)</label>
       </div>
 
       <label class="section-label" for="bandeSelect">Bande de fréquence</label>
-      <select id="bandeSelect">
+      <select autocomplete=\"off\" id="bandeSelect">
         <option value="all">Toutes les fréquences</option>
         <option value="moins_10">&lt; 10 GHz (6 - 8 GHz)</option>
         <option value="11_15">11 - 15 GHz</option>
@@ -226,7 +226,7 @@
       </select>
 
       <label class="section-label" for="regionSelect">Région</label>
-      <select id="regionSelect">
+      <select autocomplete=\"off\" id="regionSelect">
         <option value="all">Toute la France</option>
         <option value="ara">Auvergne-Rhône-Alpes</option>
         <option value="bfc">Bourgogne-Franche-Comté</option>
@@ -642,6 +642,24 @@
         map.fitBounds(REGIONS[currentRegion].bounds, { padding: [20, 20] });
       }
       bandeSelect.dispatchEvent(new Event("change"));
+    });
+
+    // Reinitialise proprement les menus et cases a cocher au F5 (evite le cache formulaire navigateur)
+    function resetControlsToDefault() {
+      if (bandeSelect) bandeSelect.value = "all";
+      if (regionSelect) regionSelect.value = "all";
+      currentBand = "all";
+      currentRegion = "all";
+      if (typeof updateRegionBoundary === "function") {
+        updateRegionBoundary("all");
+      }
+      document.querySelectorAll("#controlPanel input[type=\"checkbox\"]").forEach((cb) => {
+        cb.checked = (cb.value === "orange" || cb.dataset.op === "orange" || cb.id.toLowerCase().includes("orange"));
+      });
+    }
+    resetControlsToDefault();
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) resetControlsToDefault();
     });
 </script>
 </body>
