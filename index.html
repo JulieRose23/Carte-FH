@@ -418,15 +418,19 @@
     });
 
     if (osmStdLayer) {
-      // Secours automatique : si une tuile OSM ne repond pas, bascule sur Plan IGN
-      osmStdLayer.on('tileerror', function(e) {
-        if (!e.tile.dataset.fallback) {
-          e.tile.dataset.fallback = '1';
-          var m = e.tile.src.match(/\/(\d+)\/(\d+)\/(\d+)\.png/);
-          if (m) {
-            e.tile.src = 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=' + m[1] + '&TILEROW=' + m[3] + '&TILECOL=' + m[2];
-          }
+      // Secours automatique global (circuit-breaker) : des 3 erreurs OSM, coupe OSM et bascule sur Plan IGN
+      var osmErrorCount = 0;
+      var osmSwitchedToIgn = false;
+      osmStdLayer.on('tileerror', function() {
+        osmErrorCount++;
+        if (!osmSwitchedToIgn && osmErrorCount >= 3) {
+          osmSwitchedToIgn = true;
+          map.removeLayer(osmStdLayer);
+          planIgn.addTo(map);
         }
+      });
+      osmStdLayer.on('load', function() {
+        osmErrorCount = 0;
       });
 
       // Selecteur utilisateur en bas a droite
