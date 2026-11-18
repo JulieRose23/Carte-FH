@@ -1,3 +1,4 @@
+import sys
 import json
 import traceback
 from datetime import datetime
@@ -45,6 +46,15 @@ def detecter_archive_depuis_stations(stations):
 
 
 def choisir_archive(suggestion_id):
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].strip()
+        if len(arg) == 6 and arg.isdigit():
+            arg = f"{arg[:4]}-{arg[4:]}"
+        if len(arg) == 7 and arg[4] == "-" and arg[:4].isdigit() and arg[5:].isdigit():
+            label = formater_label_archive(arg)
+            print(f"\n[ARCHIVE] Date imposee par le nom du ZIP : {arg} ({label})")
+            return arg, label
+
     suggestion_label = formater_label_archive(suggestion_id)
     print(f"\n[ARCHIVE] Mois detecte dans les fichiers ANFR : {suggestion_id} ({suggestion_label})")
     try:
