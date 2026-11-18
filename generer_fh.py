@@ -85,11 +85,11 @@ def classer_operateur(nom):
     nom = str(nom).upper()
     if "ORANGE" in nom:
         return "orange"
-    if "SFR" in nom:
+    if "SFR" in nom or "SRR" in nom or "OUTREMER TELECOM" in nom:
         return "sfr"
     if "BOUYGUES" in nom:
         return "bouygues"
-    if "FREE" in nom:
+    if "FREE" in nom or "TELCO OI" in nom:
         return "free"
     return "autres"
 
@@ -216,7 +216,13 @@ def main():
     df["lat"] = dms_to_dd_vec(df["COR_NB_DG_LAT"], df["COR_NB_MN_LAT"], df["COR_NB_SC_LAT"], df["COR_CD_NS_LAT"])
     df["lon"] = dms_to_dd_vec(df["COR_NB_DG_LON"], df["COR_NB_MN_LON"], df["COR_NB_SC_LON"], df["COR_CD_EW_LON"])
 
-    df = df[(df["lat"] >= 41.0) & (df["lat"] <= 51.5) & (df["lon"] >= -5.5) & (df["lon"] <= 10.0)].copy()
+    in_metro = (df["lat"] >= 41.0) & (df["lat"] <= 51.5) & (df["lon"] >= -5.5) & (df["lon"] <= 10.0)
+    in_gua = (df["lat"] >= 15.7) & (df["lat"] <= 16.6) & (df["lon"] >= -61.9) & (df["lon"] <= -60.9)
+    in_mar = (df["lat"] >= 14.3) & (df["lat"] <= 15.0) & (df["lon"] >= -61.3) & (df["lon"] <= -60.7)
+    in_guy = (df["lat"] >= 2.0) & (df["lat"] <= 6.0) & (df["lon"] >= -54.8) & (df["lon"] <= -51.5)
+    in_reu = (df["lat"] >= -21.5) & (df["lat"] <= -20.8) & (df["lon"] >= 55.1) & (df["lon"] <= 56.0)
+    in_may = (df["lat"] >= -13.1) & (df["lat"] <= -12.5) & (df["lon"] >= 44.9) & (df["lon"] <= 45.4)
+    df = df[in_metro | in_gua | in_mar | in_guy | in_reu | in_may].copy()
 
     df["fai"] = df["ADM_LB_NOM"].apply(classer_operateur)
     df["freq_ghz"] = df["freq_ghz"].fillna(0.0)
