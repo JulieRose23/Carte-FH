@@ -207,11 +207,11 @@
 
       <span class="section-label">Opérateurs</span>
       <div class="op-list">
-        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="orange" /><span class="dot" style="background:#ff7900"></span>Orange</label>
-        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span>SFR</label>
-        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
-        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="free" /><span class="dot" style="background:#334155"></span>Free Mobile</label>
-        <label class="op-item"><input autocomplete=\"off\" type="checkbox" value="autres" /><span class="dot" style="background:#ec4899"></span>Autres (TDF, etc.)</label>
+        <label class="op-item" data-op-item="orange"><input autocomplete="off" type="checkbox" value="orange" /><span class="dot" style="background:#ff7900"></span><span class="op-label">Orange</span></label>
+        <label class="op-item" data-op-item="sfr"><input autocomplete="off" type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span><span class="op-label">SFR</span></label>
+        <label class="op-item" data-op-item="bouygues"><input autocomplete="off" type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span><span class="op-label">Bouygues Telecom</span></label>
+        <label class="op-item" data-op-item="free"><input autocomplete="off" type="checkbox" value="free" /><span class="dot" style="background:#334155"></span><span class="op-label">Free Mobile</span></label>
+        <label class="op-item" data-op-item="autres"><input autocomplete="off" type="checkbox" value="autres" /><span class="dot" style="background:#ec4899"></span><span class="op-label">Autres (TDF, etc.)</span></label>
       </div>
 
       <label class="section-label" for="bandeSelect">Bande de fréquence</label>
@@ -389,6 +389,58 @@
       free: "FREE MOBILE",
       autres: "AUTRES"
     };
+
+    const LIBELLES_OP_REGION = {
+      default: {
+        orange: "Orange",
+        sfr: "SFR",
+        bouygues: "Bouygues Telecom",
+        free: "Free Mobile",
+        autres: "Autres (TDF, etc.)"
+      },
+      reu: {
+        orange: "Orange",
+        sfr: "SRR (SFR)",
+        bouygues: null,
+        free: "Telco OI (Free)",
+        autres: "Zeop / Autres"
+      },
+      may: {
+        orange: "Orange",
+        sfr: "SRR (SFR)",
+        bouygues: null,
+        free: "Telco OI (Free)",
+        autres: "Autres"
+      },
+      antilles_guyane: {
+        orange: "Orange Caraïbe",
+        sfr: "Outremer Telecom (SFR)",
+        bouygues: null,
+        free: "Free Caraïbe",
+        autres: "Digicel / Dauphin / Autres"
+      }
+    };
+
+    function updateOperatorLabels(regKey) {
+      let profil = LIBELLES_OP_REGION.default;
+      if (regKey === "reu") profil = LIBELLES_OP_REGION.reu;
+      else if (regKey === "may") profil = LIBELLES_OP_REGION.may;
+      else if (regKey === "gua" || regKey === "mar" || regKey === "guy") profil = LIBELLES_OP_REGION.antilles_guyane;
+
+      document.querySelectorAll(".op-item[data-op-item]").forEach((item) => {
+        const key = item.dataset.opItem;
+        const labelText = profil[key];
+        const cb = item.querySelector("input[type=\"checkbox\"]");
+        const span = item.querySelector(".op-label");
+        if (labelText === null) {
+          item.style.display = "none";
+          if (cb && cb.checked) cb.checked = false;
+        } else {
+          item.style.display = "";
+          if (span) span.textContent = labelText;
+        }
+      });
+    }
 
     const map = L.map("map", {
       center: [46.7, 2.5],
@@ -678,6 +730,7 @@
       } else if (!regionBoundaryLayer && REGIONS[currentRegion]) {
         map.fitBounds(REGIONS[currentRegion].bounds, { padding: [20, 20] });
       }
+      updateOperatorLabels(currentRegion);
       bandeSelect.dispatchEvent(new Event("change"));
     });
 
@@ -691,8 +744,9 @@
         updateRegionBoundary("all");
       }
       document.querySelectorAll("#controlPanel input[type=\"checkbox\"]").forEach((cb) => {
-        cb.checked = (cb.value === "orange" || cb.dataset.op === "orange" || cb.id.toLowerCase().includes("orange"));
+        cb.checked = false;
       });
+      updateOperatorLabels("all");
     }
     resetControlsToDefault();
     window.addEventListener("pageshow", (e) => {
