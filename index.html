@@ -241,7 +241,11 @@
         <option value="occ">Occitanie</option>
         <option value="pdl">Pays de la Loire</option>
         <option value="pac">Provence-Alpes-Côte d'Azur</option>
-        <option value="dom">Outre-Mer (DOM)</option>
+        <option value="gua">Guadeloupe</option>
+        <option value="mar">Martinique</option>
+        <option value="guy">Guyane</option>
+        <option value="reu">La Réunion</option>
+        <option value="may">Mayotte</option>
       </select>
 
       <div class="status-bar" id="statusBar"></div>
@@ -272,7 +276,11 @@
       occ: { code: "76", bounds: [[42.33, -0.33], [45.05, 4.85]] },
       pdl: { bounds: [[46.26, -2.56], [48.57, 0.92]], code: "52" },
       pac: { code: "93", bounds: [[42.98, 4.23], [45.13, 7.72]] },
-      dom: { code: "DOM", bounds: [[-22.0, -64.0], [17.0, 56.5]] }
+      gua: { code: "01", bounds: [[15.82, -61.82], [16.52, -60.99]] },
+      mar: { code: "02", bounds: [[14.38, -61.24], [14.89, -60.80]] },
+      guy: { code: "03", bounds: [[2.10, -54.61], [5.76, -51.61]] },
+      reu: { code: "04", bounds: [[-21.40, 55.20], [-20.86, 55.85]] },
+      may: { code: "06", bounds: [[-13.02, 45.01], [-12.63, 45.31]] }
     };
 
     let regionsGeoJson = null;
@@ -352,13 +360,6 @@
       if (regKey === "all" || !REGIONS[regKey]) return true;
       const geom = feature.geometry;
       if (!geom) return true;
-
-      if (regKey === "dom") {
-        const isDom = (c) => c[1] < 40.0 || c[0] < -10.0 || c[0] > 15.0;
-        if (geom.type === "Point") return isDom(geom.coordinates);
-        if (geom.type === "LineString") return geom.coordinates.every(isDom);
-        return true;
-      }
 
       // Test exact sur le polygone GeoJSON si charge, sinon repli sur le rectangle bounds
       const targetCode = REGIONS[regKey].code;
@@ -670,8 +671,6 @@
       updateRegionBoundary(currentRegion);
       if (currentRegion === "all") {
         map.setView([46.7, 2.5], 6);
-      } else if (currentRegion === "dom") {
-        map.setView([15.5, -61.3], 7);
       } else if (!regionBoundaryLayer && REGIONS[currentRegion]) {
         map.fitBounds(REGIONS[currentRegion].bounds, { padding: [20, 20] });
       }
