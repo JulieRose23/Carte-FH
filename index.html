@@ -513,27 +513,61 @@
       });
     }
 
+    const opLoadTokens = {};
+    const MAX_CACHE_ENTRIES = 12;
+
+    function storeInLayersCache(key, data) {
+      if (layersCache[key]) delete layersCache[key];
+      const keys = Object.keys(layersCache);
+      if (keys.length >= MAX_CACHE_ENTRIES) {
+        delete layersCache[keys[0]];
+      }
+      layersCache[key] = data;
+    }
+
     async function toggleOperator(op, checked) {
+      opLoadTokens[op] = (opLoadTokens[op] || 0) + 1;
+      const token = opLoadTokens[op];
+
       if (activeLayers[op]) {
+        if (activeLayers[op].clearLayers) activeLayers[op].clearLayers();
         map.removeLayer(activeLayers[op]);
         delete activeLayers[op];
       }
-      if (!checked || !currentArchive) return;
+      if (!checked || !currentArchive) {
+        statusBar.textContent = "";
+        return;
+      }
 
-      const cacheKey = `${currentArchive}_${op}`;
+      const targetArchive = currentArchive;
+      const cacheKey = `${targetArchive}_${op}`;
       try {
         statusBar.textContent = `Chargement ${NOMS_OP[op]}...`;
         if (!layersCache[cacheKey]) {
-          const resp = await fetch(`data/${currentArchive}/fh_${op}.geojson`);
+          const resp = await fetch(`data/${targetArchive}/fh_${op}.geojson`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          layersCache[cacheKey] = await resp.json();
+          const json = await resp.json();
+          if (opLoadTokens[op] !== token) return;
+          storeInLayersCache(cacheKey, json);
         }
+        if (opLoadTokens[op] !== token) return;
+
+        // Re-nettoie par securite avant ajout
+        if (activeLayers[op]) {
+          if (activeLayers[op].clearLayers) activeLayers[op].clearLayers();
+          map.removeLayer(activeLayers[op]);
+          delete activeLayers[op];
+        }
+
         const layer = createGeoJsonLayer(layersCache[cacheKey], op);
+        if (opLoadTokens[op] !== token) return;
         layer.addTo(map);
         activeLayers[op] = layer;
         statusBar.textContent = "";
       } catch (err) {
-        statusBar.textContent = `Erreur chargement ${NOMS_OP[op]}`;
+        if (opLoadTokens[op] === token) {
+          statusBar.textContent = `Erreur chargement ${NOMS_OP[op]}`;
+        }
       }
     }
 
