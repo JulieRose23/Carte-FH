@@ -2,7 +2,7 @@
 
 Carte interactive des stations et liaisons Faisceaux Hertziens (FH) en **France métropolitaine, Corse et Outre-Mer (5 DROM)** à partir des données ouvertes de l'**ANFR**.
 
-Accéder à la carte : https://julierose23.github.io/carte-fh/
+Accéder à la carte : https://julierose23.github.io/Carte-FH/
 
 ## Fonctionnalités
 
