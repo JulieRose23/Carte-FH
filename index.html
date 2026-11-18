@@ -394,5 +394,40 @@
 
     init();
   </script>
+<script>
+    // Fonds de carte (OSM Standard + Plan IGN + Satellite IGN) avec secours automatique
+    var osmStdLayer = null;
+    map.eachLayer(function(l) { if (l instanceof L.TileLayer) osmStdLayer = l; });
+
+    var planIgn = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+      attribution: '&copy; IGN - Géoplateforme',
+      maxZoom: 19
+    });
+
+    var orthoIgn = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+      attribution: '&copy; IGN - Photographies aériennes',
+      maxZoom: 19
+    });
+
+    if (osmStdLayer) {
+      // Secours automatique : si une tuile OSM ne repond pas, bascule sur Plan IGN
+      osmStdLayer.on('tileerror', function(e) {
+        if (!e.tile.dataset.fallback) {
+          e.tile.dataset.fallback = '1';
+          var m = e.tile.src.match(/\/(\d+)\/(\d+)\/(\d+)\.png/);
+          if (m) {
+            e.tile.src = 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=' + m[1] + '&TILEROW=' + m[3] + '&TILECOL=' + m[2];
+          }
+        }
+      });
+
+      // Selecteur utilisateur en bas a droite
+      L.control.layers({
+        "OpenStreetMap": osmStdLayer,
+        "Plan IGN": planIgn,
+        "Satellite IGN": orthoIgn
+      }, null, { position: 'bottomright' }).addTo(map);
+    }
+</script>
 </body>
 </html>
