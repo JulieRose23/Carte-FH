@@ -373,7 +373,7 @@
       };
 
       if (geom.type === "Point") return checkPt(geom.coordinates);
-      if (geom.type === "LineString") return geom.coordinates.every(checkPt);
+      if (geom.type === "LineString") return geom.coordinates.some(checkPt);
       return true;
     }
 
