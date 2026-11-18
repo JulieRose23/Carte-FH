@@ -1,33 +1,24 @@
-# Carte-FH — Faisceaux Hertziens en France
+# Carte-FH — Faisceaux Hertziens (ANFR)
 
-Carte interactive permettant de visualiser et d’explorer les liaisons et supports **Faisceaux Hertziens (FH)** déployés en France à partir des données ouvertes publiées chaque mois par l’**ANFR** (Agence Nationale des Fréquences).
+Carte interactive des stations et liaisons Faisceaux Hertziens (FH) en **France métropolitaine, Corse et Outre-Mer (5 DROM)** à partir des données ouvertes de l'**ANFR**.
 
-**Accéder à la carte en ligne :** https://julierose23.github.io/Carte-FH/
-
----
+Accéder à la carte : https://julierose23.github.io/carte-fh/
 
 ## Fonctionnalités
 
-- **Filtrage par opérateur** avec code couleur dédié (Orange, SFR, Bouygues Telecom, Free Mobile, Autres/TDF).
-- **Filtrage par bande de fréquence** (< 10 GHz, 11 - 15 GHz, 18 GHz, 23 - 26 GHz, 32 - 38 GHz, 70 - 80 GHz E-Band).
-- **Filtrage géographique par région** : affichage des limites administratives et filtrage précis des pylônes et faisceaux à l’intérieur de la région sélectionnée.
-- **Historique mensuel** : sélecteur d’archives permettant de comparer l’évolution du réseau d’un mois à l’autre.
-- **Fiches détaillées des sites** : clic sur un pylône ou une liaison pour afficher les coordonnées, la hauteur, la date de mise en service, les fréquences en GHz et un lien direct vers **Cartoradio**.
-- **Rendu adaptatif au zoom** : ajustement automatique de la taille des marqueurs et de l’épaisseur des liaisons selon le niveau de zoom.
-- **Fonds de carte multiples et résilience** : choix entre **OpenStreetMap**, **Plan IGN** et **Satellite IGN** (Géoplateforme), avec bascule automatique vers le Plan IGN en cas d’indisponibilité d’OSM.
+- **Territoires couverts** : France métropolitaine, Corse et 5 DROM (Guadeloupe 971, Martinique 972, Guyane 973, La Réunion 974, Mayotte 976).
+- **Opérateurs (avec noms locaux)** :
+  - Métropole & Corse : Orange, SFR, Bouygues Telecom, Free Mobile, Autres (TDF, etc.).
+  - La Réunion & Mayotte : Orange, SRR (SFR), Telco OI (Free), Zeop / Autres.
+  - Antilles & Guyane : Orange Caraïbe, Outremer Telecom (SFR), Free Caraïbe, Digicel / Dauphin / Autres.
+- **Bandes de fréquence (GHz)** : < 10 GHz, 11–15 GHz, 18 GHz, 23–26 GHz, 32–38 GHz, 70–80 GHz.
+- **Historique mensuel** : sélection de l'archive ANFR par mois (`data/archives.json`).
+- **Liaisons point-à-point** : appariement géométrique par azimut réciproque et contrôle d'occultation.
 
----
+## Pipeline & Mise à jour
 
-## Structure du dépôt
+- `index.html` : interface Leaflet + OpenStreetMap.
+- `generer_fh.py` : traitement des tables ANFR et génération des GeoJSON dans `data/AAAA-MM/`.
+- `maj.sh` : automatisation Termux (extraction des `202*.zip`, détection de la date du ZIP, génération et `git push`).
 
-- `index.html` : Interface cartographique interactive (Leaflet)
-- `generer_fh.py` : Script Python de traitement et conversion des données ANFR en GeoJSON
-- `data/` : Archives mensuelles GeoJSON et contours des régions françaises
-- `lib/` : Bibliothèque Leaflet hébergée en local (sans dépendance CDN externe)
-
----
-
-## Source des données
-
-- **Données radioélectriques :** Data.gouv.fr — ANFR (Observatoire 2G/3G/4G/5G et Faisceaux Hertziens), mises à jour mensuellement.
-- **Fonds cartographiques :** Contributeurs OpenStreetMap et IGN Géoplateforme.
+Source : données ouvertes ANFR sur data.gouv.fr (Licence Ouverte).
