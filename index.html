@@ -452,31 +452,61 @@
     function createGeoJsonLayer(geojson, op) {
       const color = COULEURS[op] || "#334155";
       const zs = getZoomStyle(map.getZoom());
+
+      // Repere les supports voisins relies a la region selectionnee par un faisceau inter-regional
+      const linkedSupportIds = new Set();
+      if (currentRegion !== "all" && Array.isArray(geojson.features)) {
+        for (const feat of geojson.features) {
+          const props = feat.properties;
+          if (!props || props.kind !== "link") continue;
+          if (currentBand !== "all" && props.b !== currentBand) continue;
+          if (featureInRegion(feat, currentRegion)) {
+            if (props.s1 != null) linkedSupportIds.add(String(props.s1));
+            if (props.s2 != null) linkedSupportIds.add(String(props.s2));
+          }
+        }
+      }
+
       return L.geoJSON(geojson, {
         filter: (feature) => {
-          if (!featureInRegion(feature, currentRegion)) return false;
-          if (currentBand === "all") return true;
           const props = feature.properties;
-          if (props.kind === "link") return props.b === currentBand;
-          if (props.kind === "site") return Array.isArray(props.bs) && props.bs.includes(currentBand);
-          return true;
+          if (currentBand !== "all") {
+            if (props.kind === "link" && props.b !== currentBand) return false;
+            if (props.kind === "site" && (!Array.isArray(props.bs) || !props.bs.includes(currentBand))) return false;
+          }
+          if (currentRegion === "all") return true;
+          const inReg = featureInRegion(feature, currentRegion);
+          if (props.kind === "site") {
+            const isLinkedOutside = !inReg && props.sid != null && linkedSupportIds.has(String(props.sid));
+            feature._isRemoteEndpoint = isLinkedOutside;
+            return inReg || isLinkedOutside;
+          }
+          return inReg;
         },
         style: () => ({
           color: color,
           weight: zs.lineWeight,
           opacity: zs.lineOpacity
         }),
-        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-          radius: zs.radius,
-          fillColor: color,
-          color: "#ffffff",
-          weight: zs.pointWeight,
-          fillOpacity: 0.92
-        }),
+        pointToLayer: (feature, latlng) => {
+          const isRemote = Boolean(feature._isRemoteEndpoint);
+          const marker = L.circleMarker(latlng, {
+            radius: isRemote ? Math.max(1.8, zs.radius * 0.8) : zs.radius,
+            fillColor: color,
+            color: "#ffffff",
+            weight: isRemote ? Math.max(0.5, zs.pointWeight * 0.7) : zs.pointWeight,
+            fillOpacity: isRemote ? 0.50 : 0.92
+          });
+          marker._isRemoteEndpoint = isRemote;
+          return marker;
+        },
         onEachFeature: (feature, layer) => {
           layer.on("click", () => {
             const p = feature.properties;
-            const html = p.kind === "site" ? buildPopupSite(p, feature.geometry.coordinates) : buildPopupLink(p);
+            let html = p.kind === "site" ? buildPopupSite(p, feature.geometry.coordinates) : buildPopupLink(p);
+            if (feature._isRemoteEndpoint) {
+              html = `<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">&rarr; Site correspondant (hors r&eacute;gion)</div>` + html;
+            }
             layer.bindPopup(html).openPopup();
           });
         }
