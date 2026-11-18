@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carte des Faisceaux Hertziens (ANFR)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; }
+    .panel {
+      position: absolute; top: 15px; right: 15px; z-index: 1000;
+      background: white; padding: 15px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2); width: 245px;
+    }
+    .panel h3 { margin: 0 0 8px 0; font-size: 15px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #666; margin: 12px 0 6px 0; text-transform: uppercase; letter-spacing: 0.4px; }
+    .fai-item { display: flex; align-items: center; margin-bottom: 7px; cursor: pointer; font-size: 14px; }
+    .fai-item input { margin-right: 8px; cursor: pointer; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    select {
+      width: 100%; padding: 6px; border: 1px solid #ccc;
+      border-radius: 4px; font-size: 13px; background: #fff;
+    }
+    #status { font-size: 12px; color: #666; margin-top: 10px; min-height: 16px; }
+    .fh-list {
+      margin-top: 6px; padding-top: 5px; border-top: 1px solid #e5e7eb;
+      max-height: 92px; overflow-y: auto; font-size: 11.5px; line-height: 1.45;
+    }
+    .fh-row { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; color: #333; }
+    .fh-row span:first-child { font-weight: 600; color: #111; }
+    .link-block { padding: 4px 0; border-top: 1px solid #e5e7eb; margin-top: 4px; font-size: 12px; }
+    .link-block:first-of-type { border-top: none; margin-top: 2px; padding-top: 0; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="panel">
+  <h3>Faisceaux Hertziens</h3>
+
+  <div class="section-title">Archive ANFR</div>
+  <select id="archiveSelect"></select>
+
+  <div class="section-title">Opérateurs</div>
+  <label class="fai-item"><input type="checkbox" value="orange"><span class="dot" style="background:#ff7900"></span>Orange</label>
+  <label class="fai-item"><input type="checkbox" value="sfr"><span class="dot" style="background:#e2001a"></span>SFR</label>
+  <label class="fai-item"><input type="checkbox" value="bouygues"><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
+  <label class="fai-item"><input type="checkbox" value="free"><span class="dot" style="background:#cd1e25"></span>Free Mobile</label>
+  <label class="fai-item"><input type="checkbox" value="autres"><span class="dot" style="background:#6c757d"></span>Autres (TDF, etc.)</label>
+
+  <div class="section-title">Bande de fréquence</div>
+  <select id="bandeSelect">
+    <option value="all">Toutes les fréquences</option>
+    <option value="moins_10">&lt; 10 GHz (6 - 8 GHz)</option>
+    <option value="11_15">11 - 15 GHz</option>
+    <option value="18">18 GHz</option>
+    <option value="23_26">23 - 26 GHz</option>
+    <option value="32_38">32 - 38 GHz</option>
+    <option value="70_80">70 - 80 GHz (E-Band)</option>
+  </select>
+
+  <div id="status">Sélectionnez un opérateur</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map', { preferCanvas: true }).setView([46.5, 2.5], 6);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap | Données ANFR',
+    maxZoom: 19
+  }).addTo(map);
+
+  const colors = {
+    orange: '#ff7900',
+    sfr: '#e2001a',
+    bouygues: '#009dcc',
+    free: '#cd1e25',
+    autres: '#6c757d'
+  };
+
+  const rawDataCache = {};
+  const activeLayers = {};
+
+  const statusEl = document.getElementById('status');
+  const archiveSelect = document.getElementById('archiveSelect');
+  const bandeSelect = document.getElementById('bandeSelect');
+
+  async function initArchives() {
+    try {
+      const res = await fetch('data/archives.json');
+      const archives = await res.json();
+      archives.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.label;
+        archiveSelect.appendChild(opt);
+      });
+    } catch (e) {
+      const opt = document.createElement('option');
+      opt.value = '2026-11';
+      opt.textContent = 'Novembre 2026';
+      archiveSelect.appendChild(opt);
+    }
+  }
+
+  function buildLayer(fai, rawData, bandeFilter) {
+    // Regroupe les liaisons paralleles entre deux memes supports pour tout afficher au clic
+    const liensParPaire = {};
+    (rawData.features || []).forEach(f => {
+      const p = f.properties;
+      if (p.kind === 'link' && (bandeFilter === 'all' || p.b === bandeFilter)) {
+        const cle = Math.min(p.s1, p.s2) + '_' + Math.max(p.s1, p.s2);
+        if (!liensParPaire[cle]) liensParPaire[cle] = [];
+        liensParPaire[cle].push(p);
+      }
+    });
+
+    return L.geoJSON(rawData, {
+      filter: (feature) => {
+        if (bandeFilter === 'all') return true;
+        const p = feature.properties;
+        if (p.kind === 'link') return p.b === bandeFilter;
+        if (p.kind === 'site') return Array.isArray(p.bs) && p.bs.includes(bandeFilter);
+        return true;
+      },
+      style: (feature) => {
+        if (feature.properties.kind === 'link') {
+          return { color: colors[fai], weight: 2.2, opacity: 0.85 };
+        }
+      },
+      pointToLayer: (feature, latlng) => {
+        return L.circleMarker(latlng, {
+          radius: 5,
+          fillColor: colors[fai],
+          color: '#ffffff',
+          weight: 1.5,
+          opacity: 1,
+          fillOpacity: 1
+        });
+      },
+      onEachFeature: (feature, layer) => {
+        const p = feature.properties;
+        if (p.kind === 'link') {
+          const cle = Math.min(p.s1, p.s2) + '_' + Math.max(p.s1, p.s2);
+          const groupe = liensParPaire[cle] || [p];
+          const titre = groupe.length > 1
+            ? `<b>${groupe.length} Liaisons FH (${p.op.toUpperCase()})</b> — #${p.s1} &harr; #${p.s2}`
+            : `<b>Liaison FH (${p.op.toUpperCase()})</b> — #${p.s1} &harr; #${p.s2}`;
+
+          const detailsHtml = groupe.map(l => `
+            <div class="link-block">
+              <b>${l.f} GHz</b> • ${l.d} km • Azimut ${l.az}°<br>
+              Hauteurs : ${l.h} | MES : ${l.ds1} / ${l.ds2}
+            </div>
+          `).join('');
+
+          layer.bindPopup(`${titre}${detailsHtml}`);
+        } else if (p.kind === 'site') {
+          const fhsAffiches = Array.isArray(p.fhs)
+            ? (bandeFilter === 'all' ? p.fhs : p.fhs.filter(x => x.b === bandeFilter))
+            : [];
+          const listeHtml = fhsAffiches.length > 0
+            ? `<div class="fh-list">${fhsAffiches.map(x =>
+                `<div class="fh-row"><span>${x.az}° &rarr; #${x.to}</span><span>${x.f} GHz • ${x.d} km</span></div>`
+              ).join('')}</div>`
+            : '';
+
+          layer.bindPopup(`
+            <b>Site Support #${p.sid}</b> (${p.op.toUpperCase()})<br>
+            <b>Lieu :</b> ${p.adr}<br>
+            <b>Station ANFR :</b> ${p.sta} | <b>Hauteur :</b> ${p.hs} m<br>
+            <b>Implantation :</b> ${p.di} | <b>Modif :</b> ${p.dm}<br>
+            <b>Mise en service :</b> ${p.ds}<br>
+            <b>Faisceaux (${fhsAffiches.length > 0 ? fhsAffiches.length : p.n}) :</b>
+            ${listeHtml}
+          `);
+        }
+      }
+    });
+  }
+
+  async function refreshFai(fai, isChecked) {
+    const archiveId = archiveSelect.value;
+    const bandeFilter = bandeSelect.value;
+
+    if (activeLayers[fai]) {
+      map.removeLayer(activeLayers[fai]);
+      delete activeLayers[fai];
+    }
+
+    if (!isChecked) return;
+
+    if (!rawDataCache[archiveId]) rawDataCache[archiveId] = {};
+
+    if (!rawDataCache[archiveId][fai]) {
+      statusEl.textContent = `Chargement ${fai.toUpperCase()}...`;
+      try {
+        const res = await fetch(`data/${archiveId}/fh_${fai}.geojson`);
+        rawDataCache[archiveId][fai] = await res.json();
+      } catch (err) {
+        statusEl.textContent = `Données indisponibles (${fai})`;
+        document.querySelector(`.fai-item input[value="${fai}"]`).checked = false;
+        return;
+      }
+    }
+
+    const layer = buildLayer(fai, rawDataCache[archiveId][fai], bandeFilter);
+    layer.addTo(map);
+    activeLayers[fai] = layer;
+    statusEl.textContent = "";
+  }
+
+  function refreshAllChecked() {
+    document.querySelectorAll('.fai-item input').forEach(cb => {
+      refreshFai(cb.value, cb.checked);
+    });
+  }
+
+  document.querySelectorAll('.fai-item input').forEach(cb => {
+    cb.addEventListener('change', (e) => refreshFai(e.target.value, e.target.checked));
+  });
+
+  bandeSelect.addEventListener('change', refreshAllChecked);
+  archiveSelect.addEventListener('change', refreshAllChecked);
+
+  initArchives();
+</script>
+</body>
+</html>
