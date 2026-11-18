@@ -226,26 +226,30 @@
       </select>
 
       <label class="section-label" for="regionSelect">Région</label>
-      <select autocomplete=\"off\" id="regionSelect">
+      <select id="regionSelect" autocomplete="off">
         <option value="all">Toute la France</option>
-        <option value="ara">Auvergne-Rhône-Alpes</option>
-        <option value="bfc">Bourgogne-Franche-Comté</option>
-        <option value="bre">Bretagne</option>
-        <option value="cvl">Centre-Val de Loire</option>
-        <option value="cor">Corse</option>
-        <option value="ges">Grand Est</option>
-        <option value="hdf">Hauts-de-France</option>
-        <option value="idf">Île-de-France</option>
-        <option value="nor">Normandie</option>
-        <option value="naq">Nouvelle-Aquitaine</option>
-        <option value="occ">Occitanie</option>
-        <option value="pdl">Pays de la Loire</option>
-        <option value="pac">Provence-Alpes-Côte d'Azur</option>
-        <option value="gua">Guadeloupe</option>
-        <option value="mar">Martinique</option>
-        <option value="guy">Guyane</option>
-        <option value="reu">La Réunion</option>
-        <option value="may">Mayotte</option>
+        <optgroup label="Métropole &amp; Corse">
+          <option value="ara">Auvergne-Rhône-Alpes</option>
+          <option value="bfc">Bourgogne-Franche-Comté</option>
+          <option value="bre">Bretagne</option>
+          <option value="cvl">Centre-Val de Loire</option>
+          <option value="cor">Corse</option>
+          <option value="ges">Grand Est</option>
+          <option value="hdf">Hauts-de-France</option>
+          <option value="idf">Île-de-France</option>
+          <option value="nor">Normandie</option>
+          <option value="naq">Nouvelle-Aquitaine</option>
+          <option value="occ">Occitanie</option>
+          <option value="pdl">Pays de la Loire</option>
+          <option value="pac">Provence-Alpes-Côte d'Azur</option>
+        </optgroup>
+        <optgroup label="Outre-Mer (DROM)">
+          <option value="gua">Guadeloupe</option>
+          <option value="mar">Martinique</option>
+          <option value="guy">Guyane</option>
+          <option value="reu">La Réunion</option>
+          <option value="may">Mayotte</option>
+        </optgroup>
       </select>
 
       <div class="status-bar" id="statusBar"></div>
