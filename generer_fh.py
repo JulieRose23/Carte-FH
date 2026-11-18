@@ -222,7 +222,7 @@ def main():
     df["freq_ghz"] = df["freq_ghz"].fillna(0.0)
     df = df.drop_duplicates(subset=["EMR_ID"]).reset_index(drop=True)
 
-    print("3. Appairage geometrique operateur par operateur (anti-superposition + bi-bande)...")
+    print("3. Appairage geometrique operateur par operateur (anti-superposition + portee par bande)...")
     rayon_recherche_rad = DISTANCE_MAX_KM / 6371.0
 
     for fai in ["orange", "sfr", "bouygues", "free", "autres"]:
@@ -278,12 +278,20 @@ def main():
                 a = np.sin(dphi / 2.0) ** 2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda / 2.0) ** 2
                 distances = np.round(2.0 * 6371.0 * np.arctan2(np.sqrt(a), np.sqrt(1.0 - a)), 2)
 
-                masque_eband = (np.abs(freqs[idx_i] - freqs[idx_j]) <= 3.0) | (distances <= 15.0)
-                idx_i = idx_i[masque_eband]
-                idx_j = idx_j[masque_eband]
-                distances = distances[masque_eband]
+                # Portee maximale realiste selon la bande de frequence
+                f_moy = (freqs[idx_i] + freqs[idx_j]) * 0.5
+                dist_max_bande = np.where(
+                    f_moy >= 60.0, 10.0,           # 70-80 GHz (E-Band) : max 10 km
+                    np.where(f_moy >= 30.0, 22.0,  # 32-38 GHz : max 22 km
+                    np.where(f_moy >= 20.0, 40.0,  # 23-26 GHz : max 40 km
+                    DISTANCE_MAX_KM))              # <= 18 GHz : jusqu'a 120 km
+                )
+                masque_dist = ((np.abs(freqs[idx_i] - freqs[idx_j]) <= 3.0) | (distances <= 10.0)) & (distances <= dist_max_bande)
+                idx_i = idx_i[masque_dist]
+                idx_j = idx_j[masque_dist]
+                distances = distances[masque_dist]
 
-                score_align = diff1[masque_az][masque_eband] + diff2[masque_az][masque_eband]
+                score_align = diff1[masque_az][masque_dist] + diff2[masque_az][masque_dist]
                 ordre = np.argsort(score_align)
 
                 hauteurs_ant = pd.to_numeric(sub["AER_NB_ALT_BAS"].astype(str).str.replace(",", "."), errors="coerce").fillna(0).values
@@ -371,7 +379,6 @@ def main():
                     "b": l["b"]
                 })
 
-            # Un seul trace geometrique exact sans decalage de rails
             features.append({
                 "type": "Feature",
                 "geometry": {
