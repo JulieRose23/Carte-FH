@@ -2,231 +2,391 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Carte des Faisceaux Hertziens (ANFR)</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: system-ui, sans-serif; }
-    #map { width: 100%; height: 100%; }
-    .panel {
-      position: absolute; top: 15px; right: 15px; z-index: 1000;
-      background: white; padding: 15px; border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2); width: 245px;
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
     }
-    .panel h3 { margin: 0 0 8px 0; font-size: 15px; }
-    .section-title { font-size: 11px; font-weight: 700; color: #666; margin: 12px 0 6px 0; text-transform: uppercase; letter-spacing: 0.4px; }
-    .fai-item { display: flex; align-items: center; margin-bottom: 7px; cursor: pointer; font-size: 14px; }
-    .fai-item input { margin-right: 8px; cursor: pointer; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .control-panel {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(6px);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.16);
+      padding: 16px 18px;
+      width: 270px;
+      color: #1e293b;
+      transition: all 0.2s ease;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      color: #0f172a;
+    }
+    .mobile-toggle {
+      display: none;
+      background: #0f172a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .section-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      text-transform: uppercase;
+      margin: 12px 0 6px;
+    }
     select {
-      width: 100%; padding: 6px; border: 1px solid #ccc;
-      border-radius: 4px; font-size: 13px; background: #fff;
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      font-size: 13.5px;
+      color: #1e293b;
+      outline: none;
     }
-    #status { font-size: 12px; color: #666; margin-top: 10px; min-height: 16px; }
-    .fh-list {
-      margin-top: 6px; padding-top: 5px; border-top: 1px solid #e5e7eb;
-      max-height: 92px; overflow-y: auto; font-size: 11.5px; line-height: 1.45;
+    .op-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
     }
-    .fh-row { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; color: #333; }
-    .fh-row span:first-child { font-weight: 600; color: #111; }
-    .link-block { padding: 4px 0; border-top: 1px solid #e5e7eb; margin-top: 4px; font-size: 12px; }
-    .link-block:first-of-type { border-top: none; margin-top: 2px; padding-top: 0; }
+    .op-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .op-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #2563eb;
+      cursor: pointer;
+      margin: 0;
+    }
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .status-bar {
+      margin-top: 10px;
+      font-size: 11.5px;
+      color: #64748b;
+      min-height: 16px;
+    }
+
+    /* Infobulles */
+    .leaflet-popup-content {
+      margin: 12px 14px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #1e293b;
+      min-width: 240px;
+    }
+    .popup-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: #0f172a;
+    }
+    .popup-fh-list {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #e2e8f0;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 12.5px;
+    }
+    .popup-fh-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+      gap: 10px;
+    }
+
+    /* Adaptation spécifique MOBILE uniquement (sans impact sur PC) */
+    @media (max-width: 768px) {
+      .control-panel {
+        top: 10px;
+        right: 10px;
+        left: 54px;
+        width: auto;
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+      .panel-header {
+        margin-bottom: 0;
+      }
+      .panel-title {
+        font-size: 14px;
+      }
+      .mobile-toggle {
+        display: inline-block;
+      }
+      .panel-body {
+        display: none;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #e2e8f0;
+        max-height: 65vh;
+        overflow-y: auto;
+      }
+      .control-panel.open .panel-body {
+        display: block;
+      }
+      .op-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 10px;
+      }
+      .op-item {
+        font-size: 13px;
+      }
+      .leaflet-popup-content {
+        min-width: 200px;
+        max-width: 260px;
+        font-size: 12.5px;
+      }
+    }
   </style>
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
+  <div class="control-panel" id="controlPanel">
+    <div class="panel-header">
+      <h1 class="panel-title">Faisceaux Hertziens</h1>
+      <button class="mobile-toggle" id="mobileToggle" type="button">Filtres ▼</button>
+    </div>
 
-<div class="panel">
-  <h3>Faisceaux Hertziens</h3>
+    <div class="panel-body">
+      <label class="section-label" for="archiveSelect">Archive ANFR</label>
+      <select id="archiveSelect"></select>
 
-  <div class="section-title">Archive ANFR</div>
-  <select id="archiveSelect"></select>
+      <span class="section-label">Opérateurs</span>
+      <div class="op-list">
+        <label class="op-item"><input type="checkbox" value="orange" checked /><span class="dot" style="background:#ff7900"></span>Orange</label>
+        <label class="op-item"><input type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span>SFR</label>
+        <label class="op-item"><input type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
+        <label class="op-item"><input type="checkbox" value="free" /><span class="dot" style="background:#cd1e25"></span>Free Mobile</label>
+        <label class="op-item"><input type="checkbox" value="autres" /><span class="dot" style="background:#64748b"></span>Autres (TDF, etc.)</label>
+      </div>
 
-  <div class="section-title">Opérateurs</div>
-  <label class="fai-item"><input type="checkbox" value="orange"><span class="dot" style="background:#ff7900"></span>Orange</label>
-  <label class="fai-item"><input type="checkbox" value="sfr"><span class="dot" style="background:#e2001a"></span>SFR</label>
-  <label class="fai-item"><input type="checkbox" value="bouygues"><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
-  <label class="fai-item"><input type="checkbox" value="free"><span class="dot" style="background:#cd1e25"></span>Free Mobile</label>
-  <label class="fai-item"><input type="checkbox" value="autres"><span class="dot" style="background:#6c757d"></span>Autres (TDF, etc.)</label>
+      <label class="section-label" for="bandeSelect">Bande de fréquence</label>
+      <select id="bandeSelect">
+        <option value="all">Toutes les fréquences</option>
+        <option value="moins_10">&lt; 10 GHz (6 - 8 GHz)</option>
+        <option value="11_15">11 - 15 GHz</option>
+        <option value="18">18 GHz</option>
+        <option value="23_26">23 - 26 GHz</option>
+        <option value="32_38">32 - 38 GHz</option>
+        <option value="70_80">70 - 80 GHz (E-Band)</option>
+      </select>
 
-  <div class="section-title">Bande de fréquence</div>
-  <select id="bandeSelect">
-    <option value="all">Toutes les fréquences</option>
-    <option value="moins_10">&lt; 10 GHz (6 - 8 GHz)</option>
-    <option value="11_15">11 - 15 GHz</option>
-    <option value="18">18 GHz</option>
-    <option value="23_26">23 - 26 GHz</option>
-    <option value="32_38">32 - 38 GHz</option>
-    <option value="70_80">70 - 80 GHz (E-Band)</option>
-  </select>
+      <div class="status-bar" id="statusBar"></div>
+    </div>
+  </div>
 
-  <div id="status">Sélectionnez un opérateur</div>
-</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const COULEURS = {
+      orange: "#ff7900",
+      sfr: "#e2001a",
+      bouygues: "#009dcc",
+      free: "#cd1e25",
+      autres: "#64748b"
+    };
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const map = L.map('map', { preferCanvas: true }).setView([46.5, 2.5], 6);
+    const NOMS_OP = {
+      orange: "ORANGE",
+      sfr: "SFR",
+      bouygues: "BOUYGUES TELECOM",
+      free: "FREE MOBILE",
+      autres: "AUTRES"
+    };
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap | Données ANFR',
-    maxZoom: 19
-  }).addTo(map);
-
-  const colors = {
-    orange: '#ff7900',
-    sfr: '#e2001a',
-    bouygues: '#009dcc',
-    free: '#cd1e25',
-    autres: '#6c757d'
-  };
-
-  const rawDataCache = {};
-  const activeLayers = {};
-
-  const statusEl = document.getElementById('status');
-  const archiveSelect = document.getElementById('archiveSelect');
-  const bandeSelect = document.getElementById('bandeSelect');
-
-  async function initArchives() {
-    try {
-      const res = await fetch('data/archives.json');
-      const archives = await res.json();
-      archives.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = a.label;
-        archiveSelect.appendChild(opt);
-      });
-    } catch (e) {
-      const opt = document.createElement('option');
-      opt.value = '2026-11';
-      opt.textContent = 'Novembre 2026';
-      archiveSelect.appendChild(opt);
-    }
-  }
-
-  function buildLayer(fai, rawData, bandeFilter) {
-    // Regroupe les liaisons paralleles entre deux memes supports pour tout afficher au clic
-    const liensParPaire = {};
-    (rawData.features || []).forEach(f => {
-      const p = f.properties;
-      if (p.kind === 'link' && (bandeFilter === 'all' || p.b === bandeFilter)) {
-        const cle = Math.min(p.s1, p.s2) + '_' + Math.max(p.s1, p.s2);
-        if (!liensParPaire[cle]) liensParPaire[cle] = [];
-        liensParPaire[cle].push(p);
-      }
+    const map = L.map("map", {
+      center: [46.7, 2.5],
+      zoom: 6,
+      preferCanvas: true
     });
 
-    return L.geoJSON(rawData, {
-      filter: (feature) => {
-        if (bandeFilter === 'all') return true;
-        const p = feature.properties;
-        if (p.kind === 'link') return p.b === bandeFilter;
-        if (p.kind === 'site') return Array.isArray(p.bs) && p.bs.includes(bandeFilter);
-        return true;
-      },
-      style: (feature) => {
-        if (feature.properties.kind === 'link') {
-          return { color: colors[fai], weight: 2.2, opacity: 0.85 };
-        }
-      },
-      pointToLayer: (feature, latlng) => {
-        return L.circleMarker(latlng, {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap | Données ANFR'
+    }).addTo(map);
+
+    const layersCache = {};
+    const activeLayers = {};
+    let currentArchive = "";
+    let currentBand = "all";
+
+    const archiveSelect = document.getElementById("archiveSelect");
+    const bandeSelect = document.getElementById("bandeSelect");
+    const statusBar = document.getElementById("statusBar");
+    const controlPanel = document.getElementById("controlPanel");
+    const mobileToggle = document.getElementById("mobileToggle");
+
+    mobileToggle.addEventListener("click", () => {
+      const isOpen = controlPanel.classList.toggle("open");
+      mobileToggle.textContent = isOpen ? "Fermer ▲" : "Filtres ▼";
+    });
+
+    function buildPopupSite(p) {
+      const fhs = (p.fhs || []).filter(f => currentBand === "all" || f.b === currentBand);
+      const lignes = fhs.map(f =>
+        `<div class="popup-fh-row"><span>${f.az}° &rarr; #${f.to}</span><span><b>${f.f} GHz</b> &bull; ${f.d} km</span></div>`
+      ).join("");
+
+      return `
+        <div class="popup-title">Site Support #${p.sid} (${NOMS_OP[p.op] || p.op})</div>
+        <div><b>Lieu :</b> ${p.adr}</div>
+        <div><b>Station ANFR :</b> ${p.sta} | <b>Hauteur :</b> ${p.hs} m</div>
+        <div><b>Implantation :</b> ${p.di} | <b>Modif :</b> ${p.dm}</div>
+        <div><b>Mise en service :</b> ${p.ds}</div>
+        <div class="popup-fh-list">
+          <b>Faisceaux (${fhs.length}) :</b>
+          ${lignes || "<div>Aucun faisceau dans cette bande</div>"}
+        </div>
+      `;
+    }
+
+    function buildPopupLink(p) {
+      return `
+        <div class="popup-title">Liaison FH (${NOMS_OP[p.op] || p.op})</div>
+        <div><b>Fréquence :</b> ${p.f} GHz</div>
+        <div><b>Distance :</b> ${p.d} km | <b>Azimut :</b> ${p.az}°</div>
+        <div><b>Hauteurs antennes :</b> ${p.h}</div>
+        <div><b>Supports :</b> #${p.s1} &harr; #${p.s2}</div>
+      `;
+    }
+
+    function createGeoJsonLayer(geojson, op) {
+      const color = COULEURS[op] || "#334155";
+      return L.geoJSON(geojson, {
+        filter: (feature) => {
+          if (currentBand === "all") return true;
+          const props = feature.properties;
+          if (props.kind === "link") return props.b === currentBand;
+          if (props.kind === "site") return Array.isArray(props.bs) && props.bs.includes(currentBand);
+          return true;
+        },
+        style: () => ({
+          color: color,
+          weight: 2.2,
+          opacity: 0.85
+        }),
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
           radius: 5,
-          fillColor: colors[fai],
-          color: '#ffffff',
+          fillColor: color,
+          color: "#ffffff",
           weight: 1.5,
-          opacity: 1,
-          fillOpacity: 1
-        });
-      },
-      onEachFeature: (feature, layer) => {
-        const p = feature.properties;
-        if (p.kind === 'link') {
-          const cle = Math.min(p.s1, p.s2) + '_' + Math.max(p.s1, p.s2);
-          const groupe = liensParPaire[cle] || [p];
-          const titre = groupe.length > 1
-            ? `<b>${groupe.length} Liaisons FH (${p.op.toUpperCase()})</b> — #${p.s1} &harr; #${p.s2}`
-            : `<b>Liaison FH (${p.op.toUpperCase()})</b> — #${p.s1} &harr; #${p.s2}`;
-
-          const detailsHtml = groupe.map(l => `
-            <div class="link-block">
-              <b>${l.f} GHz</b> • ${l.d} km • Azimut ${l.az}°<br>
-              Hauteurs : ${l.h} | MES : ${l.ds1} / ${l.ds2}
-            </div>
-          `).join('');
-
-          layer.bindPopup(`${titre}${detailsHtml}`);
-        } else if (p.kind === 'site') {
-          const fhsAffiches = Array.isArray(p.fhs)
-            ? (bandeFilter === 'all' ? p.fhs : p.fhs.filter(x => x.b === bandeFilter))
-            : [];
-          const listeHtml = fhsAffiches.length > 0
-            ? `<div class="fh-list">${fhsAffiches.map(x =>
-                `<div class="fh-row"><span>${x.az}° &rarr; #${x.to}</span><span>${x.f} GHz • ${x.d} km</span></div>`
-              ).join('')}</div>`
-            : '';
-
-          layer.bindPopup(`
-            <b>Site Support #${p.sid}</b> (${p.op.toUpperCase()})<br>
-            <b>Lieu :</b> ${p.adr}<br>
-            <b>Station ANFR :</b> ${p.sta} | <b>Hauteur :</b> ${p.hs} m<br>
-            <b>Implantation :</b> ${p.di} | <b>Modif :</b> ${p.dm}<br>
-            <b>Mise en service :</b> ${p.ds}<br>
-            <b>Faisceaux (${fhsAffiches.length > 0 ? fhsAffiches.length : p.n}) :</b>
-            ${listeHtml}
-          `);
+          fillOpacity: 0.95
+        }),
+        onEachFeature: (feature, layer) => {
+          layer.on("click", () => {
+            const p = feature.properties;
+            const html = p.kind === "site" ? buildPopupSite(p) : buildPopupLink(p);
+            layer.bindPopup(html).openPopup();
+          });
         }
-      }
-    });
-  }
-
-  async function refreshFai(fai, isChecked) {
-    const archiveId = archiveSelect.value;
-    const bandeFilter = bandeSelect.value;
-
-    if (activeLayers[fai]) {
-      map.removeLayer(activeLayers[fai]);
-      delete activeLayers[fai];
+      });
     }
 
-    if (!isChecked) return;
+    async function toggleOperator(op, checked) {
+      if (activeLayers[op]) {
+        map.removeLayer(activeLayers[op]);
+        delete activeLayers[op];
+      }
+      if (!checked || !currentArchive) return;
 
-    if (!rawDataCache[archiveId]) rawDataCache[archiveId] = {};
-
-    if (!rawDataCache[archiveId][fai]) {
-      statusEl.textContent = `Chargement ${fai.toUpperCase()}...`;
+      const cacheKey = `${currentArchive}_${op}`;
       try {
-        const res = await fetch(`data/${archiveId}/fh_${fai}.geojson`);
-        rawDataCache[archiveId][fai] = await res.json();
+        statusBar.textContent = `Chargement ${NOMS_OP[op]}...`;
+        if (!layersCache[cacheKey]) {
+          const resp = await fetch(`data/${currentArchive}/fh_${op}.geojson`);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          layersCache[cacheKey] = await resp.json();
+        }
+        const layer = createGeoJsonLayer(layersCache[cacheKey], op);
+        layer.addTo(map);
+        activeLayers[op] = layer;
+        statusBar.textContent = "";
       } catch (err) {
-        statusEl.textContent = `Données indisponibles (${fai})`;
-        document.querySelector(`.fai-item input[value="${fai}"]`).checked = false;
-        return;
+        statusBar.textContent = `Erreur chargement ${NOMS_OP[op]}`;
       }
     }
 
-    const layer = buildLayer(fai, rawDataCache[archiveId][fai], bandeFilter);
-    layer.addTo(map);
-    activeLayers[fai] = layer;
-    statusEl.textContent = "";
-  }
+    async function refreshActiveOperators() {
+      const checkboxes = document.querySelectorAll('.op-list input[type="checkbox"]');
+      for (const cb of checkboxes) {
+        await toggleOperator(cb.value, cb.checked);
+      }
+    }
 
-  function refreshAllChecked() {
-    document.querySelectorAll('.fai-item input').forEach(cb => {
-      refreshFai(cb.value, cb.checked);
+    document.querySelectorAll('.op-list input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener("change", (e) => toggleOperator(e.target.value, e.target.checked));
     });
-  }
 
-  document.querySelectorAll('.fai-item input').forEach(cb => {
-    cb.addEventListener('change', (e) => refreshFai(e.target.value, e.target.checked));
-  });
+    bandeSelect.addEventListener("change", (e) => {
+      currentBand = e.target.value;
+      refreshActiveOperators();
+    });
 
-  bandeSelect.addEventListener('change', refreshAllChecked);
-  archiveSelect.addEventListener('change', refreshAllChecked);
+    archiveSelect.addEventListener("change", (e) => {
+      currentArchive = e.target.value;
+      refreshActiveOperators();
+    });
 
-  initArchives();
-</script>
+    async function init() {
+      try {
+        const resp = await fetch("data/archives.json");
+        const archives = await resp.json();
+        archiveSelect.innerHTML = archives.map(a => `<option value="${a.id}">${a.label}</option>`).join("");
+        if (archives.length > 0) {
+          currentArchive = archives[0].id;
+          await refreshActiveOperators();
+        }
+      } catch (err) {
+        statusBar.textContent = "Impossible de charger data/archives.json";
+      }
+    }
+
+    init();
+  </script>
 </body>
 </html>
