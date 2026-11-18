@@ -210,8 +210,8 @@
         <label class="op-item"><input type="checkbox" value="orange" /><span class="dot" style="background:#ff7900"></span>Orange</label>
         <label class="op-item"><input type="checkbox" value="sfr" /><span class="dot" style="background:#e2001a"></span>SFR</label>
         <label class="op-item"><input type="checkbox" value="bouygues" /><span class="dot" style="background:#009dcc"></span>Bouygues Telecom</label>
-        <label class="op-item"><input type="checkbox" value="free" /><span class="dot" style="background:#cd1e25"></span>Free Mobile</label>
-        <label class="op-item"><input type="checkbox" value="autres" /><span class="dot" style="background:#64748b"></span>Autres (TDF, etc.)</label>
+        <label class="op-item"><input type="checkbox" value="free" /><span class="dot" style="background:#334155"></span>Free Mobile</label>
+        <label class="op-item"><input type="checkbox" value="autres" /><span class="dot" style="background:#94a3b8"></span>Autres (TDF, etc.)</label>
       </div>
 
       <label class="section-label" for="bandeSelect">Bande de fréquence</label>
@@ -225,6 +225,25 @@
         <option value="70_80">70 - 80 GHz (E-Band)</option>
       </select>
 
+      <label class="section-label" for="regionSelect">Région</label>
+      <select id="regionSelect">
+        <option value="all">Toute la France</option>
+        <option value="ara">Auvergne-Rhône-Alpes</option>
+        <option value="bfc">Bourgogne-Franche-Comté</option>
+        <option value="bre">Bretagne</option>
+        <option value="cvl">Centre-Val de Loire</option>
+        <option value="cor">Corse</option>
+        <option value="ges">Grand Est</option>
+        <option value="hdf">Hauts-de-France</option>
+        <option value="idf">Île-de-France</option>
+        <option value="nor">Normandie</option>
+        <option value="naq">Nouvelle-Aquitaine</option>
+        <option value="occ">Occitanie</option>
+        <option value="pdl">Pays de la Loire</option>
+        <option value="pac">Provence-Alpes-Côte d'Azur</option>
+        <option value="dom">Outre-Mer (DOM)</option>
+      </select>
+
       <div class="status-bar" id="statusBar"></div>
     </div>
   </div>
@@ -235,9 +254,48 @@
       orange: "#ff7900",
       sfr: "#e2001a",
       bouygues: "#009dcc",
-      free: "#cd1e25",
-      autres: "#64748b"
+      free: "#334155",
+      autres: "#94a3b8"
     };
+
+    const REGIONS = {
+      ara: { bounds: [[44.11, 2.06], [46.80, 7.19]] },
+      bfc: { bounds: [[46.15, 2.84], [48.40, 7.14]] },
+      bre: { bounds: [[47.27, -5.15], [48.90, -1.01]] },
+      cvl: { bounds: [[46.34, 0.05], [48.94, 3.13]] },
+      cor: { bounds: [[41.33, 8.53], [43.03, 9.57]] },
+      ges: { bounds: [[47.42, 3.38], [50.17, 8.23]] },
+      hdf: { bounds: [[48.83, 1.38], [51.09, 4.26]] },
+      idf: { bounds: [[48.12, 1.44], [49.24, 3.56]] },
+      nor: { bounds: [[48.18, -1.95], [50.07, 1.80]] },
+      naq: { bounds: [[42.77, -1.80], [47.18, 2.61]] },
+      occ: { bounds: [[42.33, -0.33], [45.05, 4.85]] },
+      pdl: { bounds: [[46.26, -2.56], [48.57, 0.92]] },
+      pac: { bounds: [[42.98, 4.23], [45.13, 7.72]] },
+      dom: { bounds: [[-22.0, -64.0], [17.0, 56.5]] }
+    };
+
+    function getZoomStyle(z) {
+      if (z <= 6) return { radius: 2.0, pointWeight: 0, lineWeight: 0.9, lineOpacity: 0.45 };
+      if (z <= 8) return { radius: 2.8, pointWeight: 0.5, lineWeight: 1.3, lineOpacity: 0.60 };
+      if (z <= 10) return { radius: 4.0, pointWeight: 1.0, lineWeight: 1.8, lineOpacity: 0.75 };
+      return { radius: 5.5, pointWeight: 1.5, lineWeight: 2.3, lineOpacity: 0.88 };
+    }
+
+    function featureInRegion(feature, regKey) {
+      if (regKey === "all" || !REGIONS[regKey]) return true;
+      const [[minLat, minLon], [maxLat, maxLon]] = REGIONS[regKey].bounds;
+      const geom = feature.geometry;
+      if (!geom) return true;
+      const checkPt = (c) => {
+        const lon = c[0], lat = c[1];
+        if (regKey === "dom") return lat < 40.0 || lon < -10.0 || lon > 15.0;
+        return lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
+      };
+      if (geom.type === "Point") return checkPt(geom.coordinates);
+      if (geom.type === "LineString") return geom.coordinates.some(checkPt);
+      return true;
+    }
 
     const NOMS_OP = {
       orange: "ORANGE",
@@ -262,9 +320,11 @@
     const activeLayers = {};
     let currentArchive = "";
     let currentBand = "all";
+    let currentRegion = "all";
 
     const archiveSelect = document.getElementById("archiveSelect");
     const bandeSelect = document.getElementById("bandeSelect");
+    const regionSelect = document.getElementById("regionSelect");
     const statusBar = document.getElementById("statusBar");
     const controlPanel = document.getElementById("controlPanel");
     const mobileToggle = document.getElementById("mobileToggle");
@@ -311,8 +371,10 @@
 
     function createGeoJsonLayer(geojson, op) {
       const color = COULEURS[op] || "#334155";
+      const zs = getZoomStyle(map.getZoom());
       return L.geoJSON(geojson, {
         filter: (feature) => {
+          if (!featureInRegion(feature, currentRegion)) return false;
           if (currentBand === "all") return true;
           const props = feature.properties;
           if (props.kind === "link") return props.b === currentBand;
@@ -321,15 +383,15 @@
         },
         style: () => ({
           color: color,
-          weight: 2.2,
-          opacity: 0.85
+          weight: zs.lineWeight,
+          opacity: zs.lineOpacity
         }),
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-          radius: 5,
+          radius: zs.radius,
           fillColor: color,
           color: "#ffffff",
-          weight: 1.5,
-          fillOpacity: 0.95
+          weight: zs.pointWeight,
+          fillOpacity: 0.92
         }),
         onEachFeature: (feature, layer) => {
           layer.on("click", () => {
@@ -440,6 +502,36 @@
         "Satellite IGN": orthoIgn
       }, null, { position: 'bottomright' }).addTo(map);
     }
+</script>
+<script>
+    // Adaptation dynamique de la taille des points et liens au niveau de zoom
+    map.on("zoomend", () => {
+      const zs = getZoomStyle(map.getZoom());
+      Object.values(activeLayers).forEach((group) => {
+        if (!group || !group.eachLayer) return;
+        group.eachLayer((layer) => {
+          if (layer instanceof L.CircleMarker) {
+            layer.setRadius(zs.radius);
+            layer.setStyle({ weight: zs.pointWeight });
+          } else if (layer.setStyle) {
+            layer.setStyle({ weight: zs.lineWeight, opacity: zs.lineOpacity });
+          }
+        });
+      });
+    });
+
+    // Filtre par region + cadrage automatique
+    regionSelect.addEventListener("change", () => {
+      currentRegion = regionSelect.value;
+      if (currentRegion === "all") {
+        map.setView([46.7, 2.5], 6);
+      } else if (currentRegion === "dom") {
+        map.setView([15.5, -61.3], 7);
+      } else if (REGIONS[currentRegion]) {
+        map.fitBounds(REGIONS[currentRegion].bounds, { padding: [20, 20] });
+      }
+      bandeSelect.dispatchEvent(new Event("change"));
+    });
 </script>
 </body>
 </html>
