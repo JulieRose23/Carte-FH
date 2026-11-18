@@ -280,7 +280,7 @@
 
     fetch("data/regions.geojson")
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { regionsGeoJson = data; })
+      .then((data) => { regionsGeoJson = data; if (currentRegion !== "all") { updateRegionBoundary(currentRegion); bandeSelect.dispatchEvent(new Event("change")); } })
       .catch(() => {});
 
     function updateRegionBoundary(regKey) {
@@ -315,18 +315,65 @@
       return { radius: 5.5, pointWeight: 1.5, lineWeight: 2.3, lineOpacity: 0.88 };
     }
 
+    function pointInRing(lon, lat, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1];
+        const xj = ring[j][0], yj = ring[j][1];
+        const intersect = ((yi > lat) !== (yj > lat)) &&
+          (lon < (xj - xi) * (lat - yi) / (yj - yi + 1e-12) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pointInPolygonGeom(lon, lat, geom) {
+      if (!geom) return false;
+      if (geom.type === "Polygon") {
+        if (!pointInRing(lon, lat, geom.coordinates[0])) return false;
+        for (let k = 1; k < geom.coordinates.length; k++) {
+          if (pointInRing(lon, lat, geom.coordinates[k])) return false;
+        }
+        return true;
+      }
+      if (geom.type === "MultiPolygon") {
+        return geom.coordinates.some((poly) => {
+          if (!pointInRing(lon, lat, poly[0])) return false;
+          for (let k = 1; k < poly.length; k++) {
+            if (pointInRing(lon, lat, poly[k])) return false;
+          }
+          return true;
+        });
+      }
+      return false;
+    }
+
     function featureInRegion(feature, regKey) {
       if (regKey === "all" || !REGIONS[regKey]) return true;
-      const [[minLat, minLon], [maxLat, maxLon]] = REGIONS[regKey].bounds;
       const geom = feature.geometry;
       if (!geom) return true;
+
+      if (regKey === "dom") {
+        const isDom = (c) => c[1] < 40.0 || c[0] < -10.0 || c[0] > 15.0;
+        if (geom.type === "Point") return isDom(geom.coordinates);
+        if (geom.type === "LineString") return geom.coordinates.every(isDom);
+        return true;
+      }
+
+      // Test exact sur le polygone GeoJSON si charge, sinon repli sur le rectangle bounds
+      const targetCode = REGIONS[regKey].code;
+      const regFeat = regionsGeoJson && targetCode
+        ? regionsGeoJson.features.find((f) => String(f.properties && f.properties.code) === targetCode)
+        : null;
+
       const checkPt = (c) => {
-        const lon = c[0], lat = c[1];
-        if (regKey === "dom") return lat < 40.0 || lon < -10.0 || lon > 15.0;
-        return lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
+        if (regFeat) return pointInPolygonGeom(c[0], c[1], regFeat.geometry);
+        const [[minLat, minLon], [maxLat, maxLon]] = REGIONS[regKey].bounds;
+        return c[1] >= minLat && c[1] <= maxLat && c[0] >= minLon && c[0] <= maxLon;
       };
+
       if (geom.type === "Point") return checkPt(geom.coordinates);
-      if (geom.type === "LineString") return geom.coordinates.some(checkPt);
+      if (geom.type === "LineString") return geom.coordinates.every(checkPt);
       return true;
     }
 
