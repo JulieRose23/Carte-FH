@@ -47,7 +47,11 @@ def detecter_archive_depuis_stations(stations):
 def choisir_archive(suggestion_id):
     suggestion_label = formater_label_archive(suggestion_id)
     print(f"\n[ARCHIVE] Mois detecte dans les fichiers ANFR : {suggestion_id} ({suggestion_label})")
-    saisie = input("Appuyez sur ENTREE pour confirmer, ou tapez une autre date (AAAA-MM ou AAAAMM) : ").strip()
+    try:
+        saisie = input("Appuyez sur ENTREE pour confirmer, ou tapez une autre date (AAAA-MM ou AAAAMM) : ").strip()
+    except EOFError:
+        print(f"Mode non-interactif detecte : validation automatique de {suggestion_id}.")
+        return suggestion_id, suggestion_label
     if not saisie:
         return suggestion_id, suggestion_label
     if len(saisie) == 6 and saisie.isdigit():
