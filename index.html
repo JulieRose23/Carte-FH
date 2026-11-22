@@ -758,10 +758,13 @@
   try {
     const res = await fetch('data/archives.json?t=' + Date.now());
     const archives = await res.json();
-    const latest = Array.isArray(archives) ? archives[0] : (archives.latest || Object.keys(archives)[0]);
+    const raw = Array.isArray(archives) ? archives[0] : (archives.latest || Object.values(archives)[0]);
+    const latest = typeof raw === 'object' && raw !== null
+      ? (raw.label || raw.nom || raw.name || raw.date || raw.id || raw.mois || JSON.stringify(raw))
+      : String(raw);
     const lastSeen = localStorage.getItem('carte_fh_last_archive');
 
-    if (lastSeen && latest && latest !== lastSeen) {
+    if (lastSeen && lastSeen !== '[object Object]' && latest && latest !== lastSeen) {
       const banner = document.createElement('div');
       banner.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;color:#fff;padding:10px 16px;border-radius:12px;font:14px sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;gap:10px;align-items:center;white-space:nowrap;';
       banner.innerHTML = `<span>Nouvelles données ANFR : <b>${latest}</b></span><button style="background:#3b82f6;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:600;cursor:pointer;" onclick="location.reload()">Actualiser</button>`;
@@ -771,5 +774,8 @@
   } catch (e) {}
 })();
 </script>
+</body>
+</html>
+
 </body>
 </html>
