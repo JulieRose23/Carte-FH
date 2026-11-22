@@ -27,7 +27,7 @@ jobs:
           mkdir -p www
           cp index.html www/
           cp -r lib www/
-          sed -i 's|data/|https://julierose23.github.io/carte-fh/data/|g' www/index.html
+          sed -i 's|data/|https://raw.githubusercontent.com/JulieRose23/Carte-FH/main/data/|g' www/index.html
 
       - name: Build APK
         run: |
