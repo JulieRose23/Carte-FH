@@ -8,39 +8,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Récupérer le dépôt
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurer Node.js et Java
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - uses: actions/setup-java@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Préparer les fichiers web pour l'APK
+      - name: Prepare www
         run: |
           mkdir -p www
           cp index.html www/
           cp -r lib www/
-          # Faire pointer les requêtes data/ vers GitHub Pages pour garder les données à jour
           sed -i 's|data/|https://julierose23.github.io/carte-fh/data/|g' www/index.html
 
-      - name: Initialiser Capacitor et compiler l'APK
+      - name: Build APK
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init "Carte-FH" "io.github.julierose23.cartefh" --web-dir=www
           npx cap add android
-          # Autoriser la géolocalisation GPS dans AndroidManifest.xml
           sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application|' android/app/src/main/AndroidManifest.xml
           cd android && ./gradlew assembleDebug
 
-      - name: Publier l'APK téléchargeable
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Carte-FH-Android
-          path: android/app/build/outputs/apk/debug/app-de
-          bug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
