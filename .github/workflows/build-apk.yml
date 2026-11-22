@@ -36,6 +36,7 @@ jobs:
           npx cap init "Carte-FH" "io.github.julierose23.cartefh" --web-dir=www
           npx cap add android
           sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application|' android/app/src/main/AndroidManifest.xml
+          printf '\ndependencies {\n    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))\n}\n' >> android/app/build.gradle
           cd android && ./gradlew assembleDebug
 
       - name: Upload APK
