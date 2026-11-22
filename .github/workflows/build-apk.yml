@@ -35,7 +35,7 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init "Carte-FH" "io.github.julierose23.cartefh" --web-dir=www
           npx cap add android
-          sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application|' android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application|' android/app/src/main/AndroidManifest.xml
           cd android && ./gradlew assembleDebug
 
       - name: Upload APK
